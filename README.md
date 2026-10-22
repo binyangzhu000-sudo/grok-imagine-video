@@ -1,9 +1,16 @@
-# Grok Imagine Video & Image
+# Grok Imagine Video + Image
 
-[![GitHub stars](https://img.shields.io/github/stars/DevvGwardo/grok-imagine-video?style=flat&logo=github)](https://github.com/DevvGwardo/grok-imagine-video)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+<p align="center">
+  <img src="docs/banner.png" alt="Grok Imagine Video + Image. A scene starts with a sentence. A community Python client and OpenClaw skill for creating images, motion, and edits through xAI's APIs." width="100%">
+</p>
 
-A Python client and [OpenClaw](https://docs.openclaw.ai) skill for generating images and videos using [xAI's Grok Imagine APIs](https://docs.x.ai/developers/model-capabilities).
+<!-- Rendered from docs/banner.html at 1600x800. See docs/BRAND.md. -->
+
+**A scene starts with a sentence.**
+
+A community Python client and [OpenClaw](https://docs.openclaw.ai) skill for [xAI's Grok Imagine APIs](https://docs.x.ai/developers/model-capabilities). Generate an image, animate a still, or create and edit video with natural-language instructions.
+
+[Quick start](#quick-start) · [How it works](#how-it-works) · [Creative paths](#five-creative-paths) · [Usage](#usage) · [OpenClaw setup](#openclaw-skill-installation) · [MIT license](LICENSE)
 
 ## Features
 
@@ -12,31 +19,75 @@ A Python client and [OpenClaw](https://docs.openclaw.ai) skill for generating im
 - **Text-to-Video** — Generate video clips from text descriptions
 - **Image-to-Video** — Animate static images into motion video
 - **Video Editing** — Apply filters, speed changes, color grading, and effects
-- **Async Polling** — Non-blocking job management with progress callbacks
+- **Video Job Polling** — Track API jobs with status checks and progress callbacks; the wait helper blocks until completion or timeout
 - **OpenClaw Integration** — Drop-in skill for Discord, Telegram, and WhatsApp bots
 
 ## Quick Start
 
-1. **Get an API key** at [console.x.ai](https://console.x.ai/)
+You need Python 3.8+, `requests`, and your own xAI API key. API use is subject to your xAI account's billing and limits.
 
-2. **Set your key**
+1. **Clone the project and install the dependency.**
+   ```bash
+   git clone https://github.com/DevvGwardo/grok-imagine-video.git
+   cd grok-imagine-video
+   python3 -m pip install requests
+   ```
+
+2. **Get an API key** at [console.x.ai](https://console.x.ai/) and set it in your local environment. Do not commit your key.
    ```bash
    export XAI_API_KEY="your-key-here"
    ```
 
-3. **Run it**
+3. **Run from the repository root.** This example uses the skill's client in `scripts/`.
    ```python
+   import os
    from scripts.grok_video_api import GrokImagineVideoClient
 
-   client = GrokImagineVideoClient(api_key="your-key")
+   client = GrokImagineVideoClient(api_key=os.environ["XAI_API_KEY"])
 
-   # Generate a video
-   result = client.text_to_video("A golden retriever running through a sunny meadow", duration=10)
-   final = client.wait_for_completion(result["request_id"])
-   client.download_video(final, "output.mp4")
+   # Submit a video job, wait for its result, and save the file.
+   job = client.text_to_video(
+       "Slow camera move over a volcanic landscape at sunrise",
+       duration=10,
+   )
+   final = client.wait_for_completion(job["request_id"])
+   client.download_video(final, "outputs/scene.mp4")
    ```
 
+The wait helper polls synchronously. Generation time varies; this example does not return immediately with a finished video.
+
+## How it works
+
+<p align="center">
+  <img src="docs/images/video-workflow.png" alt="Video workflow: describe the scene; submit a video job and keep request_id; poll with wait_for_completion until video.url is available; save with download_video. Image requests return image data directly." width="100%">
+</p>
+
+1. **Describe.** Start with a text prompt, source image, or source video.
+2. **Submit.** `text_to_video()`, `image_to_video()`, and `edit_video()` return a `request_id`.
+3. **Poll.** Pass that ID to `wait_for_completion()`, or check it with `get_job_status()`. A completed response contains `video.url`.
+4. **Save.** Pass the completed response to `download_video()` and save a local file. Generated URLs are temporary.
+
+Image generation and image editing return image data directly, without the video-job polling step.
+
+## Five creative paths
+
+<p align="center">
+  <img src="docs/images/capability-map.png" alt="Five creative paths: text to image with generate_image; image editing with edit_image; text to video with text_to_video; image animation with image_to_video; video editing with edit_video." width="100%">
+</p>
+
+| Input → output | Method | What it does |
+|---|---|---|
+| Text → Image | `generate_image()` | Create images from a description |
+| Image → Image | `edit_image()` | Edit a source image with instructions |
+| Text → Video | `text_to_video()` | Start a video generation job |
+| Image → Video | `image_to_video()` | Animate a still image |
+| Video → Video | `edit_video()` | Request changes to an existing clip |
+
+The visuals are conceptual AI-generated illustrations, not captured Grok Imagine output or performance benchmarks. This is an independent community project, not an official xAI client.
+
 ## Usage
+
+These examples reuse `client` from the quick start. See the [skill API reference](references/api_reference.md) for more detail, or the [extended client reference](docs/API_REFERENCE.md) for the additional helpers in `src/`.
 
 ### Image Generation
 
@@ -90,16 +141,22 @@ result = client.edit_video(
 
 ## OpenClaw Skill Installation
 
+Install from this checkout. The repository contains the skill source; a prebuilt `.skill` archive is not required.
+
 ```bash
-mkdir -p ~/.openclaw/skills
-cp grok-imagine-video.skill ~/.openclaw/skills/
-cd ~/.openclaw/skills && unzip grok-imagine-video.skill
+dest="${OPENCLAW_STATE_DIR:-$HOME/.openclaw}/skills/grok-imagine-video"
+mkdir -p "$dest"
+cp -R SKILL.md README.md scripts references "$dest/"
 openclaw gateway restart
 ```
 
-Then tell your bot things like *"Generate a video of a sunset over the ocean"* or *"Edit this image — make it look like a watercolor painting"*.
+Run the copy commands from the repository root. Configure `XAI_API_KEY` in the environment used by your OpenClaw gateway, not only in an unrelated terminal.
+
+Then tell your bot things like *"Generate a video of a sunset over the ocean"* or *"Edit this image, make it look like a watercolor painting"*.
 
 ## API Limits
+
+These are the values documented by this client. Provider availability and account limits can change; check [xAI's current documentation](https://docs.x.ai/developers/model-capabilities) before relying on them.
 
 | Constraint | Value |
 |---|---|
@@ -126,7 +183,11 @@ grok-imagine-video/
 ├── scripts/
 │   └── grok_video_api.py      # Python client library
 ├── references/
-│   └── api_reference.md       # Full API documentation
+│   └── api_reference.md       # Skill API documentation
+├── src/
+│   └── grok_video_api.py      # Extended client, including long-video helpers
+├── tests/                    # Mocked client tests
+├── docs/                     # API reference, brand assets, and visual preview
 ├── SKILL.md                   # OpenClaw skill definition
 ├── CHANGELOG.md               # Version history
 └── README.md
@@ -141,4 +202,12 @@ grok-imagine-video/
 
 ## License
 
-MIT
+[MIT](LICENSE).
+
+## Credits and visual assets
+
+- Community client and skill: [DevvGwardo](https://github.com/DevvGwardo).
+- Image and video APIs: [xAI](https://docs.x.ai/developers/model-capabilities).
+- Agent integration: [OpenClaw](https://docs.openclaw.ai).
+
+See the [brand guide](docs/BRAND.md) for editable sources, image provenance, and rendering instructions. Open `docs/brand.html` locally for the responsive visual preview. Branding changes do not change client or skill behavior.
