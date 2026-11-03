@@ -33,6 +33,11 @@ htmlcov/
 *.png
 *.webp
 
+# Committed documentation artwork
+!docs/banner.png
+!docs/images/*.png
+!docs/images/*.webp
+
 # OS
 .DS_Store
 Thumbs.db
